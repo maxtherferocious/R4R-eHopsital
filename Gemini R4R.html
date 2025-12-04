@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Modular App Simulation</title>
+    <!-- Load Tailwind CSS for modern styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom styles for a modern look */
+        .container {
+            max-width: 1200px;
+            min-height: 80vh; /* Ensure container is tall enough for two columns */
+        }
+        /* Ensure details content handles line breaks */
+        .whitespace-pre-wrap {
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen p-4 md:p-8 flex justify-center items-start font-sans">
+
+    <div id="app" class="container w-full bg-white shadow-2xl rounded-xl p-6 md:p-8 space-y-6">
+        <!-- Header with Title and Dropdown -->
+        <div class="flex flex-col md:flex-row justify-between items-center border-b pb-3 mb-4 gap-4">
+            <h1 class="text-3xl font-bold text-gray-800">Modular Learning Console</h1>
+            <div class="flex items-center space-x-2">
+                <label for="team-select" class="text-gray-600 font-semibold">View:</label>
+                <select id="team-select" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2.5">
+                    <!-- Options populated by JS -->
+                </select>
+            </div>
+        </div>
+        
+        <!-- Two-Column Layout Container -->
+        <div class="flex flex-col md:flex-row gap-6">
+
+            <!-- Left Column (1/3 width for the List) -->
+            <div id="list-pane" class="md:w-1/3 w-full space-y-4">
+                <h2 class="text-xl font-semibold text-indigo-700">Learning Modules</h2>
+                <ul id="item-list" class="bg-indigo-50 p-4 rounded-lg shadow-inner divide-y divide-indigo-200">
+                    <!-- Items will be inserted here by the UIManager -->
+                </ul>
+                <div id="status-message" class="text-sm p-2 bg-green-100 text-green-700 rounded-md font-medium hidden"></div>
+            </div>
+
+            <!-- Right Column (2/3 width for the Content Viewer) -->
+            <div id="content-pane" class="md:w-2/3 w-full bg-white border border-gray-200 rounded-xl shadow-lg p-4 md:p-6 min-h-full">
+                <!-- Detailed content will be displayed here -->
+                <p class="text-gray-500">Select a module on the left to view its detailed content.</p>
+            </div>
+            
+        </div>
+    </div>
+
+    <script>
+        // Set the font family for Tailwind
+        tailwind.config = {
+          theme: {
+            extend: {
+              fontFamily: {
+                sans: ['Inter', 'sans-serif'],
+              },
+            }
+          }
+        }
+    </script>
+
+    <script>
+        // =================================================================
+        // CHUNK 1: DataService (Handles application data and business logic)
+        // =================================================================
+        /**
+         * Encapsulates all data storage and retrieval logic.
+         * This chunk is responsible only for data management.
+         */
+        class DataService {
+            constructor() {
+                this.currentTeam = "Team 1"; // Default Team
+                // Updated list of 28 learning modules for a clinical case flow
+                this.items = [
+                    { id: 1, name: "Chief Complaint", details: "The initial reason the patient presented to the Emergency Department. This sets the stage for the entire case." },
+                    { id: 2, name: "Triage", details: "Initial assessment and prioritization using a standardized system (e.g., ESI). This determines the urgency of care." },
+                    { id: 3, name: "ED Nursing Assessment", details: "Detailed subjective and objective data collected by the Emergency Department nurse, including vitals, pain score, and baseline history." },
+                    { id: 4, name: "ED Physician Note", details: "The attending or resident physician's comprehensive documentation of history, physical exam, differential diagnosis, and treatment plan." },
+                    { id: 5, name: "Rounds 1", details: "The first structured discussion of the patient's case, usually focusing on immediate stabilization and diagnostic workup." },
+                    { id: 6, name: "Diagnostic Consideration", details: "A deep dive into the possible diagnoses and the evidence supporting or refuting each one based on current data." },
+                    { id: 7, name: "CXR Interpretation", details: "Analysis of the initial Chest X-Ray images, focusing on key findings relevant to the chief complaint." },
+                    { id: 8, name: "Radiology Report", details: "The official, signed report from the radiologist confirming or elaborating on the imaging findings." },
+                    { id: 9, name: "Update", details: "A critical review of new data (e.g., new labs, worsening symptoms) and subsequent adjustments to the plan of care." },
+                    { id: 10, name: "Rounds 2", details: "A follow-up discussion covering the results of the initial workup and the decision for admission or discharge." },
+                    { id: 11, name: "Wrapping Up", details: "Final tasks for the Emergency Department phase, including writing orders and communicating with the accepting team." },
+                    { id: 12, name: "Revisiting Rounds", details: "A look back at the key decisions made during the ED stay and a self-critique of the diagnostic process." },
+                    { id: 13, name: "CT Interpretation", details: "Analysis of the Computed Tomography scan images, providing detailed anatomical and pathological information." },
+                    { id: 14, name: "Radiology Report", details: "The official report for the CT scan, often confirming or revealing major findings." },
+                    { id: 15, name: "ED Psychiatrist Evaluation", details: "Assessment by a Psychiatric specialist focusing on mental health stability, risk assessment, and behavioral needs." },
+                    { id: 16, name: "Primary Team Evaluation", details: "Documentation and plan formulated by the admitting service (e.g., Internal Medicine, Surgery)." },
+                    { id: 17, name: "Labs", details: "Review of all critical laboratory values, including chemistry, hematology, and microbiological studies." },
+                    { id: 18, name: "Rounds 3", details: "The final handover of the patient, covering the full ED course and the plan for the hospital stay." },
+                    { id: 19, name: "Admission Order Set", details: "Review and analysis of the standardized and personalized orders placed for the patient's inpatient management." },
+                    { id: 20, name: "Transfer to the Floor", details: "Logistics and considerations for moving the patient from the ED to the inpatient unit." },
+                    { id: 21, name: "Attending Question Set 1", details: "Initial high-yield questions posed by the senior physician to test understanding of the case management." },
+                    { id: 22, name: "Post a Resource", details: "Sharing relevant clinical guidelines, articles, or educational materials related to the patient's condition." },
+                    { id: 23, name: "The Next Day", details: "Overview of the patient's status 24 hours after admission, including interval events and changes." },
+                    { id: 24, name: "Attending Question Set 2", details: "Advanced questions to test critical thinking regarding chronic management, prognostics, and complex differential diagnoses." },
+                    { id: 25, name: "Paged by RN", details: "A scenario involving a critical page from the nurse regarding a change in the patient's status." },
+                    { id: 26, name: "Cross-Cover Question", details: "A challenging question from a colleague covering a different patient, requiring quick, confident decision-making." },
+                    { id: 27, name: "Hospital Course Continued", details: "Summary of the remaining inpatient stay, highlighting significant events, procedures, and consultations." },
+                    { id: 28, name: "Discharge", details: "Final steps, including patient education, medication reconciliation, and follow-up planning." }
+                ];
+            }
+
+            // Update the current team context
+            setTeam(teamName) {
+                this.currentTeam = teamName;
+                console.log(`DataService: Context switched to ${teamName}`);
+            }
+
+            // Public method to fetch all data
+            getAllItems() {
+                console.log("DataService: Retrieving all items.");
+                return this.items;
+            }
+
+            // Public method to retrieve details for a specific item ID
+            // Now incorporates the currentTeam to simulate unique pages/content
+            getItemDetails(id) {
+                const item = this.items.find(i => i.id === id);
+                if (!item) return null;
+
+                // We prepend the Team Name to show that the content is contextual
+                return { 
+                    name: item.name, 
+                    details: `[ Context: ${this.currentTeam} ]\n\n${item.details}` 
+                };
+            }
+        }
+
+        // =================================================================
+        // CHUNK 2: UIManager (Handles all interactions with the Document Object Model / UI)
+        // =================================================================
+        /**
+         * Encapsulates all DOM manipulation and UI rendering.
+         * This chunk is responsible only for the visual representation.
+         */
+        class UIManager {
+            constructor(listElementId, statusElementId, contentElementId, itemClickHandler) {
+                this.itemList = document.getElementById(listElementId);
+                this.statusMessage = document.getElementById(statusElementId);
+                this.contentPane = document.getElementById(contentElementId);
+                this.itemClickHandler = itemClickHandler; // Function to call when an item is clicked
+                this.activeItemId = null;
+            }
+
+            // Renders a list of items to the DOM and attaches click handlers
+            renderItems(items) {
+                if (!this.itemList) return;
+
+                this.itemList.innerHTML = items.map(item => {
+                    // Determine if this item is currently active for styling
+                    const isActive = item.id === this.activeItemId;
+                    const baseClasses = "p-3 text-gray-700 cursor-pointer hover:bg-indigo-200 transition duration-150 rounded-lg text-sm";
+                    const activeClass = isActive ? "bg-indigo-300 font-bold" : "bg-indigo-100";
+                    return `<li data-id="${item.id}" class="${baseClasses} ${activeClass}">${item.id}. ${item.name}</li>`;
+                }).join('');
+                
+                // Attach listeners to newly created list items
+                this.itemList.querySelectorAll('li').forEach(li => {
+                    li.addEventListener('click', (e) => {
+                        // Ensure we get the data-id from the li, even if the click was on the span/text
+                        let target = e.target;
+                        while (target && target.tagName !== 'LI') {
+                            target = target.parentNode;
+                        }
+                        if (target) {
+                            const id = parseInt(target.dataset.id);
+                            this.itemClickHandler(id);
+                        }
+                    });
+                });
+            }
+            
+            // Updates the list to show which item is active, then re-renders
+            setActiveItem(itemId, items) {
+                this.activeItemId = itemId;
+                this.renderItems(items);
+            }
+
+            // Displays the detailed content in the right pane
+            displayContent({ name, details }) {
+                if (!this.contentPane) return;
+                this.contentPane.innerHTML = `
+                    <div class="h-full">
+                        <h3 class="text-2xl font-extrabold text-indigo-700 mb-4 border-b pb-2">${name}</h3>
+                        <div class="text-gray-700 leading-relaxed whitespace-pre-wrap text-base">
+                            <p>${details}</p>
+                        </div>
+                    </div>
+                `;
+            }
+
+            // Displays a temporary status message
+            showMessage(message, type) {
+                if (!this.statusMessage) return;
+                this.statusMessage.textContent = message;
+                this.statusMessage.className = `text-sm p-2 rounded-md font-medium block transition duration-300`;
+                // Simple styling based on type
+                if (type === 'green') {
+                    this.statusMessage.classList.add('bg-green-100', 'text-green-700');
+                } else if (type === 'blue') {
+                    this.statusMessage.classList.add('bg-blue-100', 'text-blue-700');
+                }
+                setTimeout(() => {
+                    this.statusMessage.classList.remove('block');
+                    this.statusMessage.classList.add('hidden');
+                }, 3000);
+            }
+        }
+
+        // =================================================================
+        // CHUNK 3: App (The main entry point that initializes and connects chunks)
+        // =================================================================
+        /**
+         * Initializes the application by creating instances of the modules
+         * and orchestrating the flow.
+         */
+        function initApp() {
+            console.log("App: Initializing learning console...");
+
+            // 1. Initialize data service
+            const dataService = new DataService();
+            const allItems = dataService.getAllItems();
+            
+            let uiManager;
+
+            // Define the handler function that connects the UIManager (click) to the DataService (data fetch)
+            const handleItemClick = (itemId) => {
+                const itemDetails = dataService.getItemDetails(itemId);
+                if (itemDetails) {
+                    uiManager.displayContent(itemDetails);
+                    uiManager.setActiveItem(itemId, allItems); // Update list to highlight active item
+                    uiManager.showMessage(`Loaded: ${itemDetails.name} for ${dataService.currentTeam}`, 'blue');
+                } else {
+                    uiManager.showMessage("Error: Content not found.", 'red');
+                }
+            };
+
+            // 2. Initialize UI Manager, passing the handler function
+            uiManager = new UIManager('item-list', 'status-message', 'content-pane', handleItemClick);
+
+            // 3. Setup Team Dropdown Logic
+            const teamSelect = document.getElementById('team-select');
+            // Generate Team 1 - Team 12 options
+            for (let i = 1; i <= 12; i++) {
+                const option = document.createElement('option');
+                option.value = `Team ${i}`;
+                option.textContent = `Team ${i}`;
+                teamSelect.appendChild(option);
+            }
+            // Listen for changes
+            teamSelect.addEventListener('change', (e) => {
+                const newTeam = e.target.value;
+                dataService.setTeam(newTeam);
+                
+                // If an item is currently selected, refresh it to show the new team's content
+                if (uiManager.activeItemId) {
+                    handleItemClick(uiManager.activeItemId);
+                }
+            });
+
+            // 4. Load initial data and render the list
+            uiManager.renderItems(allItems);
+            
+            // 5. Automatically display the first item's details on load
+            if (allItems.length > 0) {
+                const firstItemId = allItems[0].id;
+                handleItemClick(firstItemId);
+            }
+        }
+
+        // Start the application after the DOM is fully loaded
+        window.addEventListener('load', initApp);
+    </script>
+
+</body>
+</html>
